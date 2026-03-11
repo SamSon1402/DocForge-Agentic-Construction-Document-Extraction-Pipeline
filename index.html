@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocForge — Agentic Document Extraction | Pillar</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #f59e0b;
+            --primary-glow: rgba(245, 158, 11, 0.35);
+            --secondary: #3b82f6;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --warning: #f97316;
+            --bg-dark: #0c0a09;
+            --bg-card: #1c1917;
+            --bg-elevated: #292524;
+            --text-primary: #fafaf9;
+            --text-secondary: #a8a29e;
+            --text-muted: #78716c;
+            --border: #44403c;
+            --gradient: linear-gradient(135deg, #f59e0b 0%, #f97316 40%, #ef4444 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 10% 90%, rgba(245, 158, 11, 0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+        }
+
+        .header {
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.04) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 0.7rem 2rem;
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+
+        .header-content { max-width: 1800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+
+        .logo-icon {
+            width: 44px; height: 44px; background: var(--gradient); border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+            position: relative;
+        }
+        .logo-icon::after { content: ''; position: absolute; inset: -2px; background: var(--gradient); border-radius: 12px; z-index: -1; opacity: 0.4; filter: blur(8px); }
+
+        .logo-text { font-size: 1.4rem; font-weight: 800; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-subtitle { font-size: 0.58rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 3px; font-weight: 500; }
+
+        .header-badges { display: flex; gap: 0.4rem; }
+        .badge { background: var(--bg-card); border: 1px solid var(--border); padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.62rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+        .badge.live { background: rgba(245, 158, 11, 0.15); border-color: var(--primary); color: var(--primary); }
+        .badge.live::before { content: ''; display: inline-block; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; margin-right: 5px; animation: pulse 1.5s infinite; }
+
+        @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 var(--primary-glow)} 50%{opacity:.6;box-shadow:0 0 0 8px transparent} }
+
+        .main { max-width: 1800px; margin: 0 auto; padding: 1.25rem 2rem; }
+
+        .hero { text-align: center; margin-bottom: 1.25rem; }
+        .hero h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.3rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        .workspace { display: grid; grid-template-columns: 1fr 400px; gap: 1.25rem; }
+        @media(max-width:1300px){ .workspace{grid-template-columns:1fr;} }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+        .card-header { padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, rgba(41,37,36,0.6) 0%, transparent 100%); }
+        .card-title { font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+        .card-body { padding: 1.2rem; }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center;
+            cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; margin-bottom: 1rem;
+        }
+        .upload-zone:hover { border-color: var(--primary); background: rgba(245,158,11,0.05); }
+        .upload-zone.active { border-color: var(--primary); background: rgba(245,158,11,0.08); border-style: solid; }
+        .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .upload-text { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .upload-sub { font-size: 0.72rem; color: var(--text-muted); }
+
+        /* Document Queue */
+        .doc-queue { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+
+        .doc-item {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 1rem;
+            background: var(--bg-elevated); border-radius: 10px; border: 1px solid var(--border);
+            transition: all 0.3s; animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+        .doc-item.processing { border-color: var(--primary); box-shadow: 0 0 20px rgba(245,158,11,0.15); }
+        .doc-item.done { border-color: var(--accent); }
+        .doc-item.error { border-color: var(--danger); }
+
+        .doc-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .doc-icon.invoice { background: rgba(245,158,11,0.2); }
+        .doc-icon.delivery { background: rgba(59,130,246,0.2); }
+        .doc-icon.report { background: rgba(16,185,129,0.2); }
+
+        .doc-info { flex: 1; min-width: 0; }
+        .doc-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .doc-meta { font-size: 0.65rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+        .doc-status { font-size: 0.65rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 0.2rem 0.5rem; border-radius: 4px; white-space: nowrap; }
+        .doc-status.queued { color: var(--text-muted); background: rgba(120,113,108,0.2); }
+        .doc-status.processing { color: var(--primary); background: rgba(245,158,11,0.15); }
+        .doc-status.done { color: var(--accent); background: rgba(16,185,129,0.15); }
+        .doc-status.error { color: var(--danger); background: rgba(239,68,68,0.15); }
+
+        /* Progress */
+        .progress-bar { width: 100%; height: 4px; background: var(--bg-dark); border-radius: 2px; overflow: hidden; margin-top: 0.4rem; }
+        .progress-fill { height: 100%; background: var(--gradient); transition: width 0.3s; border-radius: 2px; }
+
+        /* Extraction Panel */
+        .extraction-panel { background: var(--bg-elevated); border-radius: 12px; padding: 1rem; }
+        .extraction-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        .field-grid { display: flex; flex-direction: column; gap: 0.4rem; }
+        .field-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.75rem; background: var(--bg-dark); border-radius: 8px; font-size: 0.75rem; }
+        .field-key { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; min-width: 110px; }
+        .field-value { font-weight: 600; flex: 1; }
+        .field-conf { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 3px; }
+        .field-conf.high { color: var(--accent); background: rgba(16,185,129,0.15); }
+        .field-conf.medium { color: var(--primary); background: rgba(245,158,11,0.15); }
+        .field-conf.low { color: var(--danger); background: rgba(239,68,68,0.15); }
+
+        /* Pipeline Steps */
+        .pipeline { display: flex; flex-direction: column; gap: 0.4rem; }
+        .pipe-step { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.85rem; background: var(--bg-elevated); border-radius: 10px; border-left: 3px solid var(--border); transition: all 0.3s; }
+        .pipe-step.active { border-left-color: var(--primary); background: rgba(245,158,11,0.05); }
+        .pipe-step.done { border-left-color: var(--accent); }
+        .pipe-step.error { border-left-color: var(--danger); }
+
+        .pipe-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; background: var(--bg-dark); }
+        .pipe-step.active .pipe-icon { background: rgba(245,158,11,0.2); }
+        .pipe-step.done .pipe-icon { background: rgba(16,185,129,0.2); }
+
+        .pipe-name { font-size: 0.78rem; font-weight: 600; }
+        .pipe-detail { font-size: 0.62rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+        .pipe-time { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-muted); margin-left: auto; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .stat-box { background: var(--bg-dark); border-radius: 8px; padding: 0.8rem; text-align: center; }
+        .stat-val { font-size: 1.4rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .stat-val.amber { color: var(--primary); }
+        .stat-val.blue { color: var(--secondary); }
+        .stat-val.green { color: var(--accent); }
+        .stat-val.red { color: var(--danger); }
+        .stat-lbl { font-size: 0.58rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.15rem; }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .ctrl-btn {
+            flex: 1; padding: 0.7rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+        }
+        .ctrl-btn:hover { border-color: var(--primary); background: rgba(245,158,11,0.1); }
+        .ctrl-btn.active { border-color: var(--primary); background: rgba(245,158,11,0.2); color: var(--primary); }
+
+        /* Agent Log */
+        .agent-log { max-height: 260px; overflow-y: auto; }
+        .log-entry { padding: 0.6rem 0.75rem; background: var(--bg-elevated); border-radius: 8px; margin-bottom: 0.4rem; border-left: 3px solid var(--border); animation: slideUp 0.3s ease; }
+        .log-entry.thought { border-left-color: var(--secondary); }
+        .log-entry.action { border-left-color: var(--primary); }
+        .log-entry.result { border-left-color: var(--accent); }
+        .log-entry.error { border-left-color: var(--danger); }
+
+        .log-type { font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.2rem; }
+        .log-entry.thought .log-type { color: var(--secondary); }
+        .log-entry.action .log-type { color: var(--primary); }
+        .log-entry.result .log-type { color: var(--accent); }
+        .log-entry.error .log-type { color: var(--danger); }
+        .log-text { font-size: 0.73rem; color: var(--text-secondary); line-height: 1.4; }
+        .log-time { font-size: 0.58rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 0.2rem; }
+
+        /* Processing Overlay */
+        .overlay { position: fixed; inset: 0; background: rgba(12,10,9,0.97); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
+        .overlay.active { display: flex; }
+        .spinner { width: 80px; height: 80px; position: relative; margin-bottom: 1.5rem; }
+        .spinner-ring { position: absolute; inset: 0; border: 3px solid transparent; border-radius: 50%; }
+        .spinner-ring:nth-child(1) { border-top-color: var(--primary); animation: spin 1s linear infinite; }
+        .spinner-ring:nth-child(2) { inset: 8px; border-right-color: var(--secondary); animation: spin 1.5s linear infinite reverse; }
+        .spinner-ring:nth-child(3) { inset: 16px; border-bottom-color: var(--accent); animation: spin 2s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        .overlay-text { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .overlay-sub { font-size: 0.8rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 1.5rem; }
+        .overlay-bar { width: 260px; height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden; }
+        .overlay-fill { height: 100%; background: var(--gradient); width: 0%; transition: width 0.3s; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 15px 50px rgba(0,0,0,0.6); transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.4,0,0.2,1); z-index: 1000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-icon { font-size: 1.2rem; }
+        .toast-title { font-size: 0.8rem; font-weight: 600; }
+        .toast-msg { font-size: 0.65rem; color: var(--text-muted); }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">📄</div>
+                <div>
+                    <div class="logo-text">DocForge</div>
+                    <div class="logo-subtitle">Pillar · Agentic Document Extraction</div>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge live">Pipeline Active</span>
+                <span class="badge">Multi-Step Agent</span>
+                <span class="badge">OCR + LLM</span>
+                <span class="badge">Structured Output</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="hero">
+            <h1>📄 Agentic Document Extraction</h1>
+            <p>Transform unstructured construction documents — invoices, delivery notes, progress reports — into structured database records</p>
+        </div>
+
+        <div class="workspace">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📥 Document Ingestion</h3>
+                    <span style="font-size:0.68rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="queueStatus">0 documents queued</span>
+                </div>
+                <div class="card-body">
+                    <div class="upload-zone" id="uploadZone" onclick="simulateUpload()">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">Drop construction documents here</div>
+                        <div class="upload-sub">Invoices, delivery notes, progress reports • PDF, JPEG, PNG</div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="ctrl-btn" id="processBtn" onclick="startProcessing()">
+                            <span id="processIcon">▶️</span>
+                            <span id="processText">Process All</span>
+                        </button>
+                        <button class="ctrl-btn" onclick="addSampleBatch()">📦 Load Sample Batch</button>
+                        <button class="ctrl-btn" onclick="resetAll()">🔄 Reset</button>
+                    </div>
+
+                    <div class="doc-queue" id="docQueue"></div>
+
+                    <div class="extraction-panel" id="extractionPanel" style="display:none;">
+                        <div class="extraction-title">📋 Extracted Fields <span id="extractDoc" style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-left:auto;"></span></div>
+                        <div class="field-grid" id="fieldGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar" style="display:flex;flex-direction:column;gap:1rem;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">⚙️ Agent Pipeline</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="pipeline" id="pipeline">
+                            <div class="pipe-step" id="step-ocr">
+                                <div class="pipe-icon">👁️</div>
+                                <div><div class="pipe-name">OCR Extraction</div><div class="pipe-detail">Tesseract + Vision API</div></div>
+                                <div class="pipe-time" id="time-ocr">—</div>
+                            </div>
+                            <div class="pipe-step" id="step-classify">
+                                <div class="pipe-icon">🏷️</div>
+                                <div><div class="pipe-name">Document Classification</div><div class="pipe-detail">Invoice / Delivery / Report</div></div>
+                                <div class="pipe-time" id="time-classify">—</div>
+                            </div>
+                            <div class="pipe-step" id="step-extract">
+                                <div class="pipe-icon">🔍</div>
+                                <div><div class="pipe-name">Field Extraction</div><div class="pipe-detail">LLM Structured Output</div></div>
+                                <div class="pipe-time" id="time-extract">—</div>
+                            </div>
+                            <div class="pipe-step" id="step-validate">
+                                <div class="pipe-icon">✅</div>
+                                <div><div class="pipe-name">Validation & Reconciliation</div><div class="pipe-detail">Cross-ref DB records</div></div>
+                                <div class="pipe-time" id="time-validate">—</div>
+                            </div>
+                            <div class="pipe-step" id="step-store">
+                                <div class="pipe-icon">💾</div>
+                                <div><div class="pipe-name">Store to Database</div><div class="pipe-detail">PostgreSQL + Embeddings</div></div>
+                                <div class="pipe-time" id="time-store">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 Pipeline Metrics</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-box"><div class="stat-val amber" id="statProcessed">0</div><div class="stat-lbl">Processed</div></div>
+                            <div class="stat-box"><div class="stat-val green" id="statAccuracy">—</div><div class="stat-lbl">Avg Confidence</div></div>
+                            <div class="stat-box"><div class="stat-val blue" id="statFields">0</div><div class="stat-lbl">Fields Extracted</div></div>
+                            <div class="stat-box"><div class="stat-val red" id="statErrors">0</div><div class="stat-lbl">Errors</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🤖 Agent Reasoning</h3>
+                        <span style="font-size:0.62rem;color:var(--text-muted);" id="logCount">0 steps</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="agent-log" id="agentLog">
+                            <div style="color:var(--text-muted);font-size:0.78rem;text-align:center;padding:1.5rem;">
+                                Process documents to see agent reasoning
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="overlay" id="overlay">
+        <div class="spinner"><div class="spinner-ring"></div><div class="spinner-ring"></div><div class="spinner-ring"></div></div>
+        <div class="overlay-text">Initializing DocForge Agent...</div>
+        <div class="overlay-sub" id="overlaySub">Loading OCR engine...</div>
+        <div class="overlay-bar"><div class="overlay-fill" id="overlayFill"></div></div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">✅</span>
+        <div><div class="toast-title" id="toastTitle">Success</div><div class="toast-msg" id="toastMsg">Done</div></div>
+    </div>
+
+    <script>
+        let documents = [];
+        let isProcessing = false;
+        let totalProcessed = 0;
+        let totalFields = 0;
+        let totalErrors = 0;
+        let confidences = [];
+        let logSteps = 0;
+
+        const docTypes = [
+            { type: 'invoice', icon: '🧾', label: 'Invoice', cls: 'invoice' },
+            { type: 'delivery', icon: '🚚', label: 'Delivery Note', cls: 'delivery' },
+            { type: 'report', icon: '📊', label: 'Progress Report', cls: 'report' },
+        ];
+
+        const sampleDocs = [
+            { name: 'INV-2025-0847_PlomberieDurand.pdf', size: '2.4 MB', type: 0 },
+            { name: 'BL-MarseilleConcrete-Lot3.pdf', size: '1.1 MB', type: 1 },
+            { name: 'Rapport_Avancement_SemS12.pdf', size: '3.7 MB', type: 2 },
+            { name: 'FAC-ElecPro-Chantier-Lyon.pdf', size: '1.8 MB', type: 0 },
+            { name: 'BonLivraison-Acier-240T.jpg', size: '4.2 MB', type: 1 },
+            { name: 'INV-BTP-Services-Mars2025.pdf', size: '890 KB', type: 0 },
+        ];
+
+        const extractionTemplates = {
+            invoice: [
+                { key: 'vendor', label: 'Vendor', values: ['Plomberie Durand SARL', 'ElecPro France SAS', 'BTP Services Lyon'] },
+                { key: 'invoice_no', label: 'Invoice Number', values: ['INV-2025-0847', 'FAC-EP-2025-1134', 'INV-BTP-0392'] },
+                { key: 'amount_ht', label: 'Amount (HT)', values: ['€24,850.00', '€18,420.50', '€9,375.00'] },
+                { key: 'tva', label: 'TVA (20%)', values: ['€4,970.00', '€3,684.10', '€1,875.00'] },
+                { key: 'amount_ttc', label: 'Amount (TTC)', values: ['€29,820.00', '€22,104.60', '€11,250.00'] },
+                { key: 'project', label: 'Project', values: ['Résidence Les Ormes - Lot 4', 'Tour Horizon - Phase 2', 'Eco-Quartier Vauban'] },
+                { key: 'date', label: 'Invoice Date', values: ['2025-03-08', '2025-03-05', '2025-03-01'] },
+                { key: 'due_date', label: 'Due Date', values: ['2025-04-07', '2025-04-04', '2025-03-31'] },
+                { key: 'payment', label: 'Payment Terms', values: ['30 days net', '30 days net', '30 days net'] },
+            ],
+            delivery: [
+                { key: 'supplier', label: 'Supplier', values: ['Marseille Concrete SA', 'AcierFrance Distribution'] },
+                { key: 'delivery_no', label: 'Delivery No', values: ['BL-MC-2025-3341', 'BL-AF-0892'] },
+                { key: 'material', label: 'Material', values: ['Béton C30/37 prêt à l\'emploi', 'Acier HA 500 - barres 12m'] },
+                { key: 'quantity', label: 'Quantity', values: ['45 m³', '240 tonnes'] },
+                { key: 'site', label: 'Delivery Site', values: ['Chantier Lot 3 - Zone B', 'Chantier Lyon-Confluence'] },
+                { key: 'received_by', label: 'Received By', values: ['Jean-Marc Dupont', 'Ahmed Benali'] },
+                { key: 'date', label: 'Delivery Date', values: ['2025-03-10', '2025-03-09'] },
+            ],
+            report: [
+                { key: 'project', label: 'Project', values: ['ZAC Marne-Europe'] },
+                { key: 'period', label: 'Period', values: ['Semaine 12 - Mars 2025'] },
+                { key: 'completion', label: 'Completion', values: ['67.3%'] },
+                { key: 'workers', label: 'Active Workers', values: ['142'] },
+                { key: 'hours', label: 'Total Hours', values: ['4,928 h'] },
+                { key: 'budget_spent', label: 'Budget Consumed', values: ['€2.84M / €4.2M'] },
+                { key: 'delays', label: 'Delay Risk', values: ['2 days (weather)'] },
+                { key: 'next_milestone', label: 'Next Milestone', values: ['Dalle niveau 4 - 22 Mars'] },
+            ]
+        };
+
+        function simulateUpload() {
+            const rand = sampleDocs[Math.floor(Math.random() * sampleDocs.length)];
+            addDocument(rand.name, rand.size, rand.type);
+        }
+
+        function addDocument(name, size, typeIdx) {
+            const dt = docTypes[typeIdx];
+            const id = 'doc-' + Date.now() + Math.random().toString(36).slice(2, 6);
+            const doc = { id, name, size, typeIdx, status: 'queued' };
+            documents.push(doc);
+            renderQueue();
+            showToast('📄 Document Added', name);
+        }
+
+        function addSampleBatch() {
+            sampleDocs.forEach((d, i) => {
+                setTimeout(() => addDocument(d.name, d.size, d.type), i * 150);
+            });
+        }
+
+        function renderQueue() {
+            const queue = document.getElementById('docQueue');
+            queue.innerHTML = documents.map(doc => {
+                const dt = docTypes[doc.typeIdx];
+                return `<div class="doc-item ${doc.status}" id="${doc.id}">
+                    <div class="doc-icon ${dt.cls}">${dt.icon}</div>
+                    <div class="doc-info">
+                        <div class="doc-name">${doc.name}</div>
+                        <div class="doc-meta">${dt.label} • ${doc.size}</div>
+                        ${doc.status === 'processing' ? '<div class="progress-bar"><div class="progress-fill" style="width:' + (doc.progress || 0) + '%"></div></div>' : ''}
+                    </div>
+                    <div class="doc-status ${doc.status}">${doc.status === 'queued' ? 'QUEUED' : doc.status === 'processing' ? 'EXTRACTING...' : doc.status === 'done' ? '✓ DONE' : '✗ ERROR'}</div>
+                </div>`;
+            }).join('');
+            document.getElementById('queueStatus').textContent = documents.filter(d => d.status === 'queued').length + ' documents queued';
+        }
+
+        async function startProcessing() {
+            if (isProcessing || documents.length === 0) return;
+            if (documents.every(d => d.status === 'done')) { showToast('ℹ️ Info', 'All documents already processed'); return; }
+
+            const overlay = document.getElementById('overlay');
+            const bar = document.getElementById('overlayFill');
+            const sub = document.getElementById('overlaySub');
+            overlay.classList.add('active');
+
+            const stages = ['Loading OCR engine...', 'Initializing LLM agent...', 'Connecting to PostgreSQL...', 'Agent ready — starting pipeline...'];
+            let p = 0;
+            await new Promise(res => {
+                const iv = setInterval(() => {
+                    p += Math.random() * 20 + 10;
+                    if (p > 100) p = 100;
+                    bar.style.width = p + '%';
+                    sub.textContent = stages[Math.min(Math.floor(p / 25), stages.length - 1)];
+                    if (p >= 100) { clearInterval(iv); setTimeout(res, 300); }
+                }, 100);
+            });
+            overlay.classList.remove('active');
+
+            isProcessing = true;
+            document.getElementById('processIcon').textContent = '⏸️';
+            document.getElementById('processText').textContent = 'Processing...';
+            document.getElementById('processBtn').classList.add('active');
+
+            for (const doc of documents) {
+                if (doc.status !== 'queued') continue;
+                await processDocument(doc);
+            }
+
+            isProcessing = false;
+            document.getElementById('processIcon').textContent = '▶️';
+            document.getElementById('processText').textContent = 'Process All';
+            document.getElementById('processBtn').classList.remove('active');
+            showToast('✅ Batch Complete', `${totalProcessed} documents processed`);
+        }
+
+        async function processDocument(doc) {
+            doc.status = 'processing';
+            doc.progress = 0;
+            renderQueue();
+
+            const steps = ['ocr', 'classify', 'extract', 'validate', 'store'];
+            const stepNames = ['OCR Extraction', 'Classification', 'Field Extraction', 'Validation', 'Storage'];
+            const dt = docTypes[doc.typeIdx];
+
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                document.getElementById('step-' + step).className = 'pipe-step active';
+
+                const thoughts = getAgentThoughts(step, doc, dt);
+                for (const t of thoughts) {
+                    addAgentLog(t.type, t.text);
+                    await sleep(200 + Math.random() * 300);
+                }
+
+                const duration = Math.floor(80 + Math.random() * 400);
+                document.getElementById('time-' + step).textContent = duration + 'ms';
+
+                await sleep(300 + Math.random() * 500);
+                doc.progress = ((i + 1) / steps.length) * 100;
+                renderQueue();
+
+                document.getElementById('step-' + step).className = 'pipe-step done';
+            }
+
+            // Show extraction results
+            const hasError = Math.random() < 0.08;
+            if (hasError) {
+                doc.status = 'error';
+                totalErrors++;
+                addAgentLog('error', `Validation failed for ${doc.name} — amount mismatch detected`);
+            } else {
+                doc.status = 'done';
+                showExtraction(doc);
+            }
+
+            totalProcessed++;
+            const conf = 85 + Math.random() * 14;
+            confidences.push(conf);
+            const fieldsCount = Math.floor(6 + Math.random() * 5);
+            totalFields += fieldsCount;
+
+            document.getElementById('statProcessed').textContent = totalProcessed;
+            document.getElementById('statAccuracy').textContent = (confidences.reduce((a, b) => a + b, 0) / confidences.length).toFixed(1) + '%';
+            document.getElementById('statFields').textContent = totalFields;
+            document.getElementById('statErrors').textContent = totalErrors;
+
+            renderQueue();
+            steps.forEach(s => { document.getElementById('step-' + s).className = 'pipe-step'; document.getElementById('time-' + s).textContent = '—'; });
+        }
+
+        function showExtraction(doc) {
+            const panel = document.getElementById('extractionPanel');
+            const grid = document.getElementById('fieldGrid');
+            const dt = docTypes[doc.typeIdx];
+            const type = dt.type === '🧾' ? 'invoice' : dt.cls;
+            const template = extractionTemplates[type] || extractionTemplates.invoice;
+
+            document.getElementById('extractDoc').textContent = doc.name;
+            panel.style.display = 'block';
+
+            grid.innerHTML = template.map(f => {
+                const val = f.values[Math.floor(Math.random() * f.values.length)];
+                const conf = 80 + Math.random() * 19.5;
+                const cls = conf > 95 ? 'high' : conf > 88 ? 'medium' : 'low';
+                return `<div class="field-row">
+                    <span class="field-key">${f.label}</span>
+                    <span class="field-value">${val}</span>
+                    <span class="field-conf ${cls}">${conf.toFixed(1)}%</span>
+                </div>`;
+            }).join('');
+        }
+
+        function getAgentThoughts(step, doc, dt) {
+            const thoughts = {
+                ocr: [
+                    { type: 'thought', text: `Analyzing document structure of "${doc.name}"...` },
+                    { type: 'action', text: 'Running Tesseract OCR with french language model + Vision API fallback' },
+                    { type: 'result', text: `Extracted ${Math.floor(200 + Math.random() * 800)} text tokens with ${(95 + Math.random() * 4.5).toFixed(1)}% character confidence` },
+                ],
+                classify: [
+                    { type: 'thought', text: `Detected keywords: ${dt.label.toLowerCase()} markers, financial amounts, project references` },
+                    { type: 'action', text: 'Classifying document type via zero-shot LLM classifier' },
+                    { type: 'result', text: `Classification: ${dt.label} (confidence: ${(92 + Math.random() * 7).toFixed(1)}%)` },
+                ],
+                extract: [
+                    { type: 'thought', text: `Applying ${dt.label} extraction schema — ${dt.cls === 'invoice' ? '9' : dt.cls === 'delivery' ? '7' : '8'} target fields` },
+                    { type: 'action', text: 'LLM structured output extraction with JSON schema validation' },
+                    { type: 'result', text: `All fields extracted. Average field confidence: ${(88 + Math.random() * 10).toFixed(1)}%` },
+                ],
+                validate: [
+                    { type: 'thought', text: 'Cross-referencing extracted data against existing project records...' },
+                    { type: 'action', text: 'Querying PostgreSQL for matching project_id, vendor, and amount ranges' },
+                    { type: 'result', text: `Validation passed — ${Math.floor(2 + Math.random() * 4)} cross-references confirmed` },
+                ],
+                store: [
+                    { type: 'action', text: 'Writing structured record to construction_documents table' },
+                    { type: 'action', text: 'Generating document embedding for semantic search index' },
+                    { type: 'result', text: `Record stored (id: doc_${Math.random().toString(36).slice(2,10)}) + vector indexed` },
+                ],
+            };
+            return thoughts[step] || [];
+        }
+
+        function addAgentLog(type, text) {
+            const log = document.getElementById('agentLog');
+            if (logSteps === 0) log.innerHTML = '';
+            logSteps++;
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const now = new Date();
+            entry.innerHTML = `<div class="log-type">${type}</div><div class="log-text">${text}</div><div class="log-time">${now.toLocaleTimeString()}</div>`;
+            log.insertBefore(entry, log.firstChild);
+
+            if (log.children.length > 30) log.removeChild(log.lastChild);
+            document.getElementById('logCount').textContent = `${logSteps} steps`;
+        }
+
+        function resetAll() {
+            isProcessing = false;
+            documents = [];
+            totalProcessed = 0; totalFields = 0; totalErrors = 0; confidences = []; logSteps = 0;
+            document.getElementById('docQueue').innerHTML = '';
+            document.getElementById('agentLog').innerHTML = '<div style="color:var(--text-muted);font-size:0.78rem;text-align:center;padding:1.5rem;">Process documents to see agent reasoning</div>';
+            document.getElementById('extractionPanel').style.display = 'none';
+            document.getElementById('statProcessed').textContent = '0';
+            document.getElementById('statAccuracy').textContent = '—';
+            document.getElementById('statFields').textContent = '0';
+            document.getElementById('statErrors').textContent = '0';
+            document.getElementById('logCount').textContent = '0 steps';
+            document.getElementById('queueStatus').textContent = '0 documents queued';
+            ['ocr','classify','extract','validate','store'].forEach(s => { document.getElementById('step-'+s).className='pipe-step'; document.getElementById('time-'+s).textContent='—'; });
+            document.getElementById('processIcon').textContent = '▶️';
+            document.getElementById('processText').textContent = 'Process All';
+            document.getElementById('processBtn').classList.remove('active');
+            showToast('🔄 Reset', 'Pipeline cleared');
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        function showToast(title, msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
